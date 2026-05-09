@@ -1,0 +1,13 @@
+{
+    "name": "MPU9250",
+    "version": "1.0.0",
+    "description": "InvenSense MPU-9250 9-DOF IMU driver (accel, gyro, magnetometer). Platform-independent via HAL.",
+    "license": "MIT",
+    "dependencies": [
+        { "name": "HAL" }
+    ],
+    "build": {
+        "includeDir": "include",
+        "srcDir": "src"
+    }
+}
