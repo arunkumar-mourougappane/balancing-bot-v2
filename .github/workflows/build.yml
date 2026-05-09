@@ -1,0 +1,148 @@
+name: Build Firmware
+
+# Push to main       → build all three targets, upload artifacts to the run.
+# Push a v* tag      → build + create a GitHub release, attach the binaries.
+# Pull request       → build only (no release, no artifact retention needed).
+# workflow_dispatch  → manual build, same as push to main.
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'      # stable:     v1.2.3
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: v1.2.3-rc1, v1.2.3-beta.1
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Build all three firmware targets in parallel.
+  # ────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false   # report all targets independently
+      matrix:
+        environment: [lpc1768, frdm_k64f, esp32s3_tft]
+
+    steps:
+      # ── Source ───────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Python ───────────────────────────────────────────────────────────────
+      # Python 3.11 is required for the mbed targets.
+      # framework-mbed (mbed OS 5.17) uses `imp` and `distutils`, both removed
+      # in Python 3.12.  ubuntu-latest ships 3.12+, so we pin to 3.11 here.
+      # The ESP32/Arduino target is unaffected and also builds fine on 3.11.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── PlatformIO ───────────────────────────────────────────────────────────
+      - name: Install PlatformIO Core
+        run: pip install "platformio~=6.1"
+
+      # ── Cache ────────────────────────────────────────────────────────────────
+      # Each environment gets its own cache slot: lpc1768/frdm_k64f need ARM
+      # GCC + mbed (~400 MB); esp32s3_tft needs the Xtensa toolchain + ESP-IDF
+      # Arduino core (~500 MB).  Sharing one slot would cause constant eviction.
+      # The restore-keys let PRs reuse a cache from main on a platformio.ini
+      # change, avoiding a full cold toolchain download.
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ matrix.environment }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-${{ matrix.environment }}-
+            pio-${{ runner.os }}-
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      - name: Build ${{ matrix.environment }}
+        run: pio run -e ${{ matrix.environment }}
+
+      # ── Artifacts ────────────────────────────────────────────────────────────
+      # Retain every binary.  On tag runs the release job downloads these and
+      # attaches them to the GitHub release.  On branch/PR runs they are still
+      # available for download from the Actions run page.
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.environment }}
+          path: .pio/build/${{ matrix.environment }}/firmware.bin
+          if-no-files-found: error
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Create a GitHub release and attach the firmware binaries.
+  # Runs only when a version tag is pushed; requires all build jobs to pass
+  # (needs: build with fail-fast:false ensures we never release partial builds).
+  # ────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write   # create release + upload assets
+
+    steps:
+      # ── Collect firmware binaries ─────────────────────────────────────────────
+      # Download all firmware-* artifacts (one per matrix environment).
+      # Each lands in its own sub-directory:
+      #   staging/firmware-lpc1768/firmware.bin
+      #   staging/firmware-frdm_k64f/firmware.bin
+      #   staging/firmware-esp32s3_tft/firmware.bin
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: staging
+
+      # Rename to <env>.bin so release assets have meaningful names rather than
+      # three files all called "firmware.bin".
+      #   staging/lpc1768.bin
+      #   staging/frdm_k64f.bin
+      #   staging/esp32s3_tft.bin
+      - name: Rename binaries
+        run: |
+          for dir in staging/firmware-*; do
+            env_name="${dir##*/firmware-}"
+            mv "${dir}/firmware.bin" "staging/${env_name}.bin"
+            rmdir "${dir}"
+          done
+          echo "Release assets:"
+          ls -lh staging/*.bin
+
+      # ── Create release ────────────────────────────────────────────────────────
+      # softprops/action-gh-release creates the release and uploads assets in
+      # one step.  generate_release_notes appends an auto-generated changelog
+      # (commits since the previous tag) below the custom body.
+      # A tag like v1.2.3-rc1 (contains a hyphen) is marked as a pre-release.
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          body: |
+            ## Pre-compiled firmware — ${{ github.ref_name }}
+
+            Flash with PlatformIO:
+            ```bash
+            pio run -e <target> -t upload
+            ```
+
+            | Binary | Target board | Framework |
+            |--------|--------------|-----------|
+            | `lpc1768.bin` | Adafruit mbed LPC1768 (#834) | mbed OS 5 |
+            | `frdm_k64f.bin` | NXP Freedom-K64F | mbed OS 5 |
+            | `esp32s3_tft.bin` | Adafruit ESP32-S3 TFT Feather | Arduino |
+
+          files: staging/*.bin
+          fail_on_unmatched_files: true
