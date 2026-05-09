@@ -58,7 +58,8 @@ balancing-bot-2/
 │           └── Madgwick.cpp
 ├── docs/
 │   ├── architecture.md              # Layer design and component responsibilities
-│   └── program_flow.md              # Boot and main-loop sequence
+│   ├── program_flow.md              # Boot and main-loop sequence
+│   └── improvements.md              # Comparison against Balancing-Bot v1
 ├── .github/
 │   └── workflows/
 │       └── build.yml                # CI build + tag-triggered release workflow
@@ -153,6 +154,7 @@ The `update()` and `getRoll()`/`getPitch()`/`getYaw()` interface is identical.
 
 - [Architecture overview](docs/architecture.md) — layer design, HAL interface, library responsibilities, build-flag selection
 - [Program flow](docs/program_flow.md) — step-by-step boot sequence and main-loop timing
+- [Improvements over v1](docs/improvements.md) — sensor upgrade, filter replacement, architecture changes, bug fixes, and CI/CD additions relative to the [original Balancing-Bot](https://github.com/arunkumar-mourougappane/Balancing-Bot)
 
 ## Releases
 
