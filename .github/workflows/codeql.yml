@@ -1,14 +1,34 @@
 name: CodeQL Analysis
 
-# Runs on every push/PR to main and on a weekly schedule so that newly
-# published vulnerability patterns are applied even when the code is quiet.
+# Push / PR  → only when source files change (paths filter).
+#              Documentation, README, and workflow-only commits are skipped.
+# Schedule   → weekly full scan regardless of what changed, so newly published
+#              vulnerability patterns are applied even when the code is quiet.
+#              (paths filters are ignored on schedule triggers by GitHub.)
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'include/**'
+      - 'platformio.ini'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'include/**'
+      - 'platformio.ini'
   schedule:
     - cron: '0 6 * * 1'    # Every Monday at 06:00 UTC
+
+# Cancel an in-progress scan on the same branch/PR when a newer commit
+# arrives.  Avoids queuing multiple CodeQL jobs for rapid-fire pushes.
+# The schedule trigger gets its own group so it is never cancelled.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
   analyze:
@@ -37,8 +57,17 @@ jobs:
         run: pip install "platformio~=6.1"
 
       # ── Cache ────────────────────────────────────────────────────────────────
-      # Reuse the lpc1768 cache slot from build.yml where possible.
-      - name: Cache PlatformIO packages
+      # Two separate restore steps — one per toolchain family — using the same
+      # key format as build.yml so that caches warmed by the build workflow are
+      # reused here without a second download.
+      #
+      # Step 1: ARM GCC + framework-mbed (~400 MB) for the lpc1768 build.
+      # Step 2: Xtensa GCC + Arduino ESP32 core (~500 MB) for esp32s3_tft.
+      #
+      # GitHub Actions allows multiple cache steps on the same path; each step
+      # layers its packages on top of whatever is already in ~/.platformio.
+      # Together they populate the full toolchain set in one cache-restore pass.
+      - name: Restore PlatformIO cache (mbed / ARM)
         uses: actions/cache@v4
         with:
           path: ~/.platformio
@@ -47,15 +76,22 @@ jobs:
             pio-${{ runner.os }}-lpc1768-
             pio-${{ runner.os }}-
 
+      - name: Restore PlatformIO cache (Arduino / ESP32)
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-esp32s3_tft-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-esp32s3_tft-
+            pio-${{ runner.os }}-
+
       # ── CodeQL init ──────────────────────────────────────────────────────────
-      # Initialise the CodeQL database before the build so that it can trace
-      # every compiler invocation.
+      # Must run before the build so CodeQL can trace every compiler invocation.
       #
-      # language: c-cpp  — covers both C and C++ translation units
-      # queries: security-and-quality — includes the default security suite
-      #   plus code-quality checks (unused variables, dead code, type confusion)
-      # build-mode: manual — PlatformIO is not auto-detected by CodeQL's
-      #   autobuild heuristic, so we drive the build ourselves below.
+      # language: c-cpp     — covers both C and C++ translation units
+      # queries: security-and-quality — security suite + quality checks
+      #   (dead code, integer overflow, unused return values, type confusion)
+      # build-mode: manual  — PlatformIO is not detected by CodeQL autobuild
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -64,20 +100,18 @@ jobs:
           build-mode: manual
 
       # ── Build ────────────────────────────────────────────────────────────────
-      # Build the lpc1768 target as the representative environment.
-      # All three targets compile the same lib/HAL, lib/MPU9250, lib/AHRS, and
-      # src/main.cpp; only the HAL implementation file that is active differs
-      # (hal_mbed.cpp here, hal_arduino.cpp for esp32s3_tft).  A second build
-      # of esp32s3_tft covers the Arduino-side HAL path.
-      - name: Build lpc1768 (mbed path)
+      # lpc1768 traces: lib/MPU9250, lib/AHRS, src/main.cpp, lib/HAL/hal_mbed.cpp
+      # esp32s3_tft traces the only remaining unique file: lib/HAL/hal_arduino.cpp
+      # frdm_k64f is intentionally skipped — it compiles the same hal_mbed.cpp
+      # path as lpc1768 and adds no new translation units to the database.
+      - name: Build lpc1768 (mbed HAL path)
         run: pio run -e lpc1768
 
-      - name: Build esp32s3_tft (Arduino path)
+      - name: Build esp32s3_tft (Arduino HAL path)
         run: pio run -e esp32s3_tft
 
       # ── Analysis ─────────────────────────────────────────────────────────────
-      # Upload results to GitHub's Security tab as a SARIF report.
-      # Findings appear under Security → Code scanning alerts.
+      # Upload SARIF to GitHub Security → Code scanning alerts.
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
