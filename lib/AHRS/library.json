@@ -1,0 +1,10 @@
+{
+    "name": "AHRS",
+    "version": "1.0.0",
+    "description": "Attitude and Heading Reference System: Mahony and Madgwick quaternion fusion filters. No hardware dependencies.",
+    "license": "MIT",
+    "build": {
+        "includeDir": "include",
+        "srcDir": "src"
+    }
+}
