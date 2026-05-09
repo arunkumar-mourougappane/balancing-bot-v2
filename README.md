@@ -1,5 +1,9 @@
 # balancing-bot-2
 
+[![Build Firmware](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml/badge.svg)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/arunkumar-mourougappane/balancing-bot-v2)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Embedded firmware for a self-balancing robot. Reads a 9-DOF InvenSense MPU-9250 IMU over I2C, fuses the sensor data with a Mahony complementary filter, and streams calibrated gyro rates plus roll/pitch/yaw angles over USB serial at 38400 baud.
 
 Migrated from a single-file mbed sketch into a modular [PlatformIO](https://platformio.org/) project supporting three target boards out of the box.
@@ -23,31 +27,36 @@ Migrated from a single-file mbed sketch into a modular [PlatformIO](https://plat
 ```text
 balancing-bot-2/
 ├── src/
-│   └── main.cpp             # Application entry point (shared across all targets)
+│   └── main.cpp                     # Application entry point (all targets)
 ├── lib/
-│   ├── HAL/                 # Hardware Abstraction Layer
-│   │   ├── include/hal.h    # Platform-independent interface
+│   ├── HAL/                         # Hardware Abstraction Layer
+│   │   ├── include/hal.h            # Platform-independent interface
 │   │   └── src/
-│   │       ├── hal_mbed.cpp     # mbed implementation (LPC1768, FRDM-K64F)
-│   │       └── hal_arduino.cpp  # Arduino implementation (ESP32-S3)
-│   ├── MPU9250/             # IMU driver
+│   │       ├── hal_mbed.cpp         # mbed implementation (LPC1768, FRDM-K64F)
+│   │       └── hal_arduino.cpp      # Arduino implementation (ESP32-S3)
+│   ├── MPU9250/                     # IMU driver
 │   │   ├── include/
 │   │   │   ├── MPU9250_registers.h  # Full register map, 7-bit I2C addresses
 │   │   │   └── MPU9250.h            # Driver class
 │   │   └── src/MPU9250.cpp
-│   └── AHRS/                # Attitude & Heading Reference System filters
+│   └── AHRS/                        # Attitude & Heading Reference System filters
 │       ├── include/
-│       │   ├── Mahony.h     # Mahony complementary filter
-│       │   └── Madgwick.h   # Madgwick gradient-descent filter
+│       │   ├── Mahony.h             # Mahony complementary filter
+│       │   └── Madgwick.h           # Madgwick gradient-descent filter
 │       └── src/
 │           ├── Mahony.cpp
 │           └── Madgwick.cpp
 ├── docs/
-│   ├── architecture.md      # Layer design and component responsibilities
-│   └── program_flow.md      # Boot and main-loop sequence
-├── platformio.ini           # Three build environments
-├── mbed_app.json            # mbed config: sets stdio baud rate to 38400
-└── LICENSE                  # MIT
+│   ├── architecture.md              # Layer design and component responsibilities
+│   └── program_flow.md              # Boot and main-loop sequence
+├── .github/
+│   └── workflows/
+│       └── build.yml                # CI build + tag-triggered release workflow
+├── platformio.ini                   # Three build environments
+├── mbed_app.json                    # mbed config: stdio baud rate 38400
+├── CHANGELOG.md                     # Version history (Keep a Changelog format)
+├── RELEASE_NOTES.md                 # Detailed notes for the current release
+└── LICENSE                          # MIT
 ```
 
 ## Building
@@ -134,6 +143,16 @@ The `update()` and `getRoll()`/`getPitch()`/`getYaw()` interface is identical.
 
 - [Architecture overview](docs/architecture.md) — layer design, HAL interface, library responsibilities, build-flag selection
 - [Program flow](docs/program_flow.md) — step-by-step boot sequence and main-loop timing
+
+## Releases
+
+Pre-compiled binaries for all three targets are attached to every
+[GitHub release](https://github.com/arunkumar-mourougappane/balancing-bot-v2/releases).
+Tag a commit with `vMAJOR.MINOR.PATCH` and the CI pipeline builds and
+publishes the release automatically.
+
+- [RELEASE_NOTES.md](RELEASE_NOTES.md) — detailed notes for the current release
+- [CHANGELOG.md](CHANGELOG.md) — full version history
 
 ## License
 
