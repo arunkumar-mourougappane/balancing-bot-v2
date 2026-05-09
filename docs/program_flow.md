@@ -18,7 +18,7 @@ The ESP-IDF bootloader and Arduino core run before `setup()` is called. Peripher
 
 ## 2. `app_init()`
 
-```
+```text
 app_init()
 │
 ├── hal_init()
@@ -47,7 +47,7 @@ app_init()
 
 Total blocking time: ≈3.4 seconds
 
-```
+```text
 begin()
 │
 ├── readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250)
@@ -132,7 +132,7 @@ begin()
 
 Called repeatedly (mbed: `while(1)`; Arduino: implicit by framework).
 
-```
+```text
 app_loop()
 │
 ├── computeDt()
@@ -205,17 +205,17 @@ app_loop()
 
 ## 5. Timing summary
 
-| Phase | Duration | Notes |
-|---|---|---|
-| `hal_init()` | < 5 ms | I2C config, timer start |
-| `reset()` | 100 ms | Waits for MPU-9250 reset |
-| `selfTest()` | ≈200 ms | 200×2 sample collections + 25 ms stabilisation waits |
-| `calibrate()` | ≈355 ms | 100 ms reset + 200 ms PLL + 15 ms FIFO reset + 40 ms data |
-| Settling wait | 2000 ms | Allows oscillations after calibration to damp out |
-| `initMPU9250()` | 100 ms | Dominated by PWR_MGMT_1 PLL wait |
-| `initAK8963()` | 40 ms | Four 10 ms delays between mode transitions |
-| **Total init** | **≈3.4 s** | |
-| **Steady-state loop** | **5 ms/cycle** | 200 Hz data rate (SMPLRT_DIV = 4) |
+| Phase                 | Duration       | Notes                                                     |
+| --------------------- | -------------- | --------------------------------------------------------- |
+| `hal_init()`          | < 5 ms         | I2C config, timer start                                   |
+| `reset()`             | 100 ms         | Waits for MPU-9250 reset                                  |
+| `selfTest()`          | ≈200 ms        | 200×2 sample collections + 25 ms stabilisation waits      |
+| `calibrate()`         | ≈355 ms        | 100 ms reset + 200 ms PLL + 15 ms FIFO reset + 40 ms data |
+| Settling wait         | 2000 ms        | Allows oscillations after calibration to damp out         |
+| `initMPU9250()`       | 100 ms         | Dominated by PWR_MGMT_1 PLL wait                          |
+| `initAK8963()`        | 40 ms          | Four 10 ms delays between mode transitions                |
+| **Total init**        | **≈3.4 s**     |                                                           |
+| **Steady-state loop** | **5 ms/cycle** | 200 Hz data rate (SMPLRT_DIV = 4)                         |
 
 ---
 
