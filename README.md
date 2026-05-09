@@ -3,6 +3,16 @@
 [![Build Firmware](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml/badge.svg)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml)
 [![Latest Release](https://img.shields.io/github/v/release/arunkumar-mourougappane/balancing-bot-v2)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/arunkumar-mourougappane/balancing-bot-v2/main)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/commits/main)
+
+[![mbed OS 5](https://img.shields.io/badge/mbed%20OS-5.17-0069C7?logo=arm&logoColor=white)](https://os.mbed.com/)
+[![Arduino](https://img.shields.io/badge/Arduino-ESP--IDF-00979D?logo=arduino&logoColor=white)](https://www.arduino.cc/)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1-f5822a?logo=platformio&logoColor=white)](https://platformio.org/)
+[![C++11](https://img.shields.io/badge/C++-11-00599C?logo=cplusplus&logoColor=white)](https://isocpp.org/)
+
+[![LPC1768](https://img.shields.io/badge/Board-LPC1768-0069C7?logo=arm&logoColor=white)](https://www.adafruit.com/product/834)
+[![FRDM-K64F](https://img.shields.io/badge/Board-FRDM--K64F-0069C7?logo=arm&logoColor=white)](https://www.nxp.com/design/development-boards/freedom-development-boards/mcu-boards/freedom-development-platform-for-kinetis-k64-k63-and-k24-mcus:FRDM-K64F)
+[![ESP32-S3](https://img.shields.io/badge/Board-ESP32--S3-E7352C?logo=espressif&logoColor=white)](https://www.adafruit.com/product/5691)
 
 Embedded firmware for a self-balancing robot. Reads a 9-DOF InvenSense MPU-9250 IMU over I2C, fuses the sensor data with a Mahony complementary filter, and streams calibrated gyro rates plus roll/pitch/yaw angles over USB serial at 38400 baud.
 
