@@ -1,0 +1,10 @@
+{
+    "name": "HAL",
+    "version": "1.0.0",
+    "description": "Hardware Abstraction Layer: I2C, timing, logging, GPIO for mbed and Arduino",
+    "license": "MIT",
+    "build": {
+        "includeDir": "include",
+        "srcDir": "src"
+    }
+}
