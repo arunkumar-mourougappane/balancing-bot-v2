@@ -1,0 +1,84 @@
+name: CodeQL Analysis
+
+# Runs on every push/PR to main and on a weekly schedule so that newly
+# published vulnerability patterns are applied even when the code is quiet.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'    # Every Monday at 06:00 UTC
+
+jobs:
+  analyze:
+    name: Analyze (C/C++)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # upload SARIF results to the Security tab
+      actions: read           # read workflow metadata
+      contents: read          # checkout
+
+    steps:
+      # ── Source ───────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Python ───────────────────────────────────────────────────────────────
+      # Same 3.11 pin as build.yml: framework-mbed uses imp/distutils removed
+      # in Python 3.12, and ubuntu-latest now ships 3.12+.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── PlatformIO ───────────────────────────────────────────────────────────
+      - name: Install PlatformIO Core
+        run: pip install "platformio~=6.1"
+
+      # ── Cache ────────────────────────────────────────────────────────────────
+      # Reuse the lpc1768 cache slot from build.yml where possible.
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-lpc1768-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-lpc1768-
+            pio-${{ runner.os }}-
+
+      # ── CodeQL init ──────────────────────────────────────────────────────────
+      # Initialise the CodeQL database before the build so that it can trace
+      # every compiler invocation.
+      #
+      # language: c-cpp  — covers both C and C++ translation units
+      # queries: security-and-quality — includes the default security suite
+      #   plus code-quality checks (unused variables, dead code, type confusion)
+      # build-mode: manual — PlatformIO is not auto-detected by CodeQL's
+      #   autobuild heuristic, so we drive the build ourselves below.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          queries: security-and-quality
+          build-mode: manual
+
+      # ── Build ────────────────────────────────────────────────────────────────
+      # Build the lpc1768 target as the representative environment.
+      # All three targets compile the same lib/HAL, lib/MPU9250, lib/AHRS, and
+      # src/main.cpp; only the HAL implementation file that is active differs
+      # (hal_mbed.cpp here, hal_arduino.cpp for esp32s3_tft).  A second build
+      # of esp32s3_tft covers the Arduino-side HAL path.
+      - name: Build lpc1768 (mbed path)
+        run: pio run -e lpc1768
+
+      - name: Build esp32s3_tft (Arduino path)
+        run: pio run -e esp32s3_tft
+
+      # ── Analysis ─────────────────────────────────────────────────────────────
+      # Upload results to GitHub's Security tab as a SARIF report.
+      # Findings appear under Security → Code scanning alerts.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:c-cpp

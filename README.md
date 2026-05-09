@@ -1,6 +1,7 @@
 # balancing-bot-2
 
 [![Build Firmware](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml/badge.svg)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/build.yml)
+[![CodeQL](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/codeql.yml/badge.svg)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/actions/workflows/codeql.yml)
 [![Latest Release](https://img.shields.io/github/v/release/arunkumar-mourougappane/balancing-bot-v2)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/arunkumar-mourougappane/balancing-bot-v2/main)](https://github.com/arunkumar-mourougappane/balancing-bot-v2/commits/main)
