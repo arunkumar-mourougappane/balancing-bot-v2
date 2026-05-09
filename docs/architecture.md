@@ -287,3 +287,5 @@ The `nxplpc` and `freescalekinetis` platforms ship `framework-mbed` (mbed OS 5.1
 | `tools/utils.py`                                    | `import imp` + `imp.find_module`              | `importlib.util.find_spec`         |
 
 These patches are not part of the project source and will need to be reapplied if PlatformIO reinstalls the mbed framework package. The ESP32 target (Arduino framework) is unaffected.
+
+**CI is not affected.** The GitHub Actions workflow (`.github/workflows/build.yml`) pins to Python 3.11 via `actions/setup-python`, where `imp` and `distutils` are still present. No patches are applied or needed in CI.
