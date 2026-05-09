@@ -4,27 +4,27 @@
 
 The firmware is organised into three independent libraries under `lib/` and a thin application in `src/`. Each layer has a single responsibility and no knowledge of the layers above it.
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    src/main.cpp  (Application)               │
-│                                                              │
-│   app_init()          ──────────────────────►  MPU9250.begin()
-│   app_loop()          ──────────────────────►  MPU9250.readSensors()
-│                       ──────────────────────►  Mahony.update()
-│                       ──────────────────────►  hal_log()
-└───────────────────────┬──────────────────────────────────────┘
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                      src/main.cpp  (Application)                       │
+│                                                                        │
+│   app_init()          ──────────────────────►  MPU9250.begin()         │
+│   app_loop()          ──────────────────────►  MPU9250.readSensors()   │
+│                       ──────────────────────►  Mahony.update()         │
+│                       ──────────────────────►  hal_log()               │
+└───────────────────────┬────────────────────────────────────────────────┘
                         │ includes
            ┌────────────┴──────────────────────────────┐
            │                                           │
            ▼                                           ▼
 ┌──────────────────────┐               ┌─────────────────────────┐
-│    lib/MPU9250        │               │       lib/AHRS           │
+│    lib/MPU9250       │               │       lib/AHRS          │
 │                      │               │                         │
 │  MPU9250_registers.h │               │  Mahony.h / Mahony.cpp  │
 │  MPU9250.h           │               │  Madgwick.h / Madgwick  │
 │  MPU9250.cpp         │               │                         │
-│                      │               │  Pure float arithmetic.  │
-│  Calls HAL for I2C,  │               │  Zero hardware deps.     │
+│                      │               │  Pure float arithmetic. │
+│  Calls HAL for I2C,  │               │  Zero hardware deps.    │
 │  timing, and logging │               │                         │
 └──────────┬───────────┘               └─────────────────────────┘
            │ calls hal_i2c_*, hal_delay_*, hal_log
@@ -34,16 +34,16 @@ The firmware is organised into three independent libraries under `lib/` and a th
 │                                                              │
 │               hal.h  (platform-independent interface)        │
 │                                                              │
-│  ┌───────────────────────┐   ┌──────────────────────────┐   │
-│  │    hal_mbed.cpp        │   │    hal_arduino.cpp        │   │
-│  │                        │   │                          │   │
-│  │  mbed::I2C             │   │  Arduino Wire            │   │
-│  │  mbed::Timer           │   │  millis() / micros()     │   │
-│  │  mbed::DigitalOut      │   │  digitalWrite()          │   │
-│  │  printf() → USB UART   │   │  Serial.print()          │   │
-│  │                        │   │                          │   │
-│  │  #ifdef HAL_MBED       │   │  #ifdef HAL_ARDUINO      │   │
-│  └───────────────────────┘   └──────────────────────────┘   │
+│  ┌───────────────────────┐   ┌──────────────────────────┐    │
+│  │    hal_mbed.cpp       │   │    hal_arduino.cpp       │    │
+│  │                       │   │                          │    │
+│  │  mbed::I2C            │   │  Arduino Wire            │    │
+│  │  mbed::Timer          │   │  millis() / micros()     │    │
+│  │  mbed::DigitalOut     │   │  digitalWrite()          │    │
+│  │  printf() → USB UART  │   │  Serial.print()          │    │
+│  │                       │   │                          │    │
+│  │  #ifdef HAL_MBED      │   │  #ifdef HAL_ARDUINO      │    │
+│  └───────────────────────┘   └──────────────────────────┘    │
 └──────────────────────────────────────────────────────────────┘
            │                               │
            ▼                               ▼
@@ -58,26 +58,26 @@ The firmware is organised into three independent libraries under `lib/` and a th
 
 ### Interface (`include/hal.h`)
 
-| Function | Description |
-|---|---|
-| `hal_init()` | Configure I2C at 400 kHz, start timer, open serial port, set LED initial state |
-| `hal_delay_ms(ms)` | Blocking millisecond delay |
-| `hal_delay_us(us)` | Blocking microsecond delay |
-| `hal_micros()` | 32-bit microsecond counter. Wraps after ≈71 minutes |
-| `hal_i2c_write(addr, reg, data)` | Write one byte to a 7-bit I2C device register |
-| `hal_i2c_read(addr, reg, buf, len)` | Burst-read `len` bytes starting at `reg` |
-| `hal_log(fmt, ...)` | `printf`-style formatted output over USB serial |
-| `hal_led1_toggle()` | Toggle status LED 1 |
-| `hal_led2_toggle()` | Toggle status LED 2 |
+| Function                            | Description                                                                    |
+|-------------------------------------|--------------------------------------------------------------------------------|
+| `hal_init()`                        | Configure I2C at 400 kHz, start timer, open serial port, set LED initial state |
+| `hal_delay_ms(ms)`                  | Blocking millisecond delay                                                     |
+| `hal_delay_us(us)`                  | Blocking microsecond delay                                                     |
+| `hal_micros()`                      | 32-bit microsecond counter. Wraps after ≈71 minutes                            |
+| `hal_i2c_write(addr, reg, data)`    | Write one byte to a 7-bit I2C device register                                  |
+| `hal_i2c_read(addr, reg, buf, len)` | Burst-read `len` bytes starting at `reg`                                       |
+| `hal_log(fmt, ...)`                 | `printf`-style formatted output over USB serial                                |
+| `hal_led1_toggle()`                 | Toggle status LED 1                                                            |
+| `hal_led2_toggle()`                 | Toggle status LED 2                                                            |
 
 ### I2C addressing
 
 All I2C addresses throughout the codebase are **7-bit** (as in the MPU-9250 datasheet). Each HAL implementation translates to the convention its framework expects:
 
-| Framework | Convention | Translation |
-|---|---|---|
-| mbed | 8-bit (left-shifted by 1) | HAL shifts: `i2c.write(addr << 1, ...)` |
-| Arduino Wire | 7-bit | HAL passes directly: `Wire.beginTransmission(addr)` |
+| Framework    | Convention                | Translation                                         |
+|--------------|---------------------------|-----------------------------------------------------|
+| mbed         | 8-bit (left-shifted by 1) | HAL shifts: `i2c.write(addr << 1, ...)`             |
+| Arduino Wire | 7-bit                     | HAL passes directly: `Wire.beginTransmission(addr)` |
 
 ### mbed implementation (`src/hal_mbed.cpp`)
 
@@ -86,10 +86,10 @@ All I2C addresses throughout the codebase are **7-bit** (as in the MPU-9250 data
 - `hal_log` calls `vprintf`, which mbed routes to the USB serial. Baud rate is set to 38400 via `mbed_app.json` (`platform.stdio-baud-rate`).
 - LED polarity is board-specific: **LPC1768** LEDs are active-high; **FRDM-K64F** RGB LEDs are active-low.
 
-| Board | LED 1 pin | LED 2 pin | Polarity |
-|---|---|---|---|
-| LPC1768 | `LED1` (p1.18) | `LED2` (p1.20) | Active-high |
-| FRDM-K64F | `LED1` (PTB22, red) | `LED_BLUE` (PTB21) | Active-low |
+| Board     | LED 1 pin           | LED 2 pin          | Polarity    |
+|-----------|---------------------|--------------------|-------------|
+| LPC1768   | `LED1` (p1.18)      | `LED2` (p1.20)     | Active-high |
+| FRDM-K64F | `LED1` (PTB22, red) | `LED_BLUE` (PTB21) | Active-low  |
 
 ### Arduino implementation (`src/hal_arduino.cpp`)
 
@@ -110,15 +110,15 @@ PlatformIO passes `-DHAL_MBED` or `-DHAL_ARDUINO` via `build_flags` in `platform
 
 ### Files
 
-| File | Contents |
-|---|---|
-| `include/MPU9250_registers.h` | Complete register map. All I2C addresses are 7-bit. Enums for `Ascale`, `Gscale`, `Mscale`. |
-| `include/MPU9250.h` | `MPU9250` class declaration. Public sensor values (`ax/ay/az`, `gx/gy/gz`, `mx/my/mz`, `temperature`). |
-| `src/MPU9250.cpp` | All method implementations. Calls only `hal_*` functions — no direct mbed or Arduino code. |
+| File                          | Contents                                                                                               |
+|-------------------------------|--------------------------------------------------------------------------------------------------------|
+| `include/MPU9250_registers.h` | Complete register map. All I2C addresses are 7-bit. Enums for `Ascale`, `Gscale`, `Mscale`.            |
+| `include/MPU9250.h`           | `MPU9250` class declaration. Public sensor values (`ax/ay/az`, `gx/gy/gz`, `mx/my/mz`, `temperature`). |
+| `src/MPU9250.cpp`             | All method implementations. Calls only `hal_*` functions — no direct mbed or Arduino code.             |
 
 ### Class design
 
-```
+```text
 MPU9250
 ├── Public data (updated by readSensors)
 │   ax, ay, az      [g]
@@ -143,11 +143,11 @@ MPU9250
 
 ### Sensor configuration (defaults)
 
-| Sensor | Scale | Bandwidth | Output rate |
-|---|---|---|---|
-| Accelerometer | ±2 g (16384 LSB/g) | 41 Hz | 200 Hz |
-| Gyroscope | ±250 dps (131 LSB/dps) | 41 Hz | 200 Hz |
-| Magnetometer | 16-bit (0.15 mG/LSB) | — | 100 Hz |
+| Sensor        | Scale                  | Bandwidth | Output rate |
+|---------------|------------------------|-----------|-------------|
+| Accelerometer | ±2 g (16384 LSB/g)     | 41 Hz     | 200 Hz      |
+| Gyroscope     | ±250 dps (131 LSB/dps) | 41 Hz     | 200 Hz      |
+| Magnetometer  | 16-bit (0.15 mG/LSB)   | —         | 100 Hz      |
 
 The 200 Hz accel/gyro rate is set by `SMPLRT_DIV = 4` applied to the 1 kHz internal rate.
 
@@ -175,10 +175,10 @@ A complementary filter that drives the quaternion toward the accelerometer and m
 
 **Tuning parameters:**
 
-| Parameter | Default | Effect |
-|---|---|---|
-| `Kp` | `10.0` | Proportional gain. Higher = faster convergence to accel/mag reference; more noise in steady state |
-| `Ki` | `0.0` | Integral gain. > 0 integrates the error to cancel persistent gyro bias; disabled to prevent wind-up |
+| Parameter | Default | Effect                                                                                              |
+|-----------|---------|-----------------------------------------------------------------------------------------------------|
+| `Kp`      | `10.0`  | Proportional gain. Higher = faster convergence to accel/mag reference; more noise in steady state   |
+| `Ki`      | `0.0`   | Integral gain. > 0 integrates the error to cancel persistent gyro bias; disabled to prevent wind-up |
 
 **State:** `_q[4]` (quaternion w,x,y,z), `_eInt[3]` (integral error accumulator).
 
@@ -190,9 +190,9 @@ A gradient-descent filter that minimises the difference between the quaternion-r
 
 **Tuning parameter:**
 
-| Parameter | Default | Typical range |
-|---|---|---|
-| `beta` | `0.1` | 0.01 (low noise, slow) – 1.0 (fast, noisy). Original paper recommends `sqrt(3/4) * gyroMeasError_rad_s` |
+| Parameter | Default | Typical range                                                                                           |
+|-----------|---------|---------------------------------------------------------------------------------------------------------|
+| `beta`    | `0.1`   | 0.01 (low noise, slow) – 1.0 (fast, noisy). Original paper recommends `sqrt(3/4) * gyroMeasError_rad_s` |
 
 ### Euler angle convention
 
@@ -276,14 +276,14 @@ Each library under `lib/` has a `library.json` that declares `includeDir` and `s
 
 The `nxplpc` and `freescalekinetis` platforms ship `framework-mbed` (mbed OS 5.17), which was written against Python 2/3 and uses `imp` and `distutils` — both removed in Python 3.12. The following files in `~/.platformio/packages/framework-mbed/` were patched once:
 
-| File | Original import | Replacement |
-|---|---|---|
-| `platformio/package_deps/py3/past/builtins/misc.py` | `from imp import reload` | `from importlib import reload` |
-| `tools/toolchains/mbed_toolchain.py` | `from distutils.spawn import find_executable` | `try/except` → `shutil.which` |
-| `tools/toolchains/gcc.py` | `from distutils.spawn import find_executable` | `try/except` → `shutil.which` |
-| `tools/toolchains/gcc.py` | `from distutils.version import LooseVersion` | `try/except` → inline compat class |
-| `tools/toolchains/arm.py` | `from distutils.version import LooseVersion` | `try/except` → inline compat class |
-| `tools/toolchains/iar.py` | `from distutils.version import LooseVersion` | `try/except` → inline compat class |
-| `tools/utils.py` | `import imp` + `imp.find_module` | `importlib.util.find_spec` |
+| File                                                | Original import                               | Replacement                        |
+|-----------------------------------------------------|-----------------------------------------------|------------------------------------|
+| `platformio/package_deps/py3/past/builtins/misc.py` | `from imp import reload`                      | `from importlib import reload`     |
+| `tools/toolchains/mbed_toolchain.py`                | `from distutils.spawn import find_executable` | `try/except` → `shutil.which`      |
+| `tools/toolchains/gcc.py`                           | `from distutils.spawn import find_executable` | `try/except` → `shutil.which`      |
+| `tools/toolchains/gcc.py`                           | `from distutils.version import LooseVersion`  | `try/except` → inline compat class |
+| `tools/toolchains/arm.py`                           | `from distutils.version import LooseVersion`  | `try/except` → inline compat class |
+| `tools/toolchains/iar.py`                           | `from distutils.version import LooseVersion`  | `try/except` → inline compat class |
+| `tools/utils.py`                                    | `import imp` + `imp.find_module`              | `importlib.util.find_spec`         |
 
 These patches are not part of the project source and will need to be reapplied if PlatformIO reinstalls the mbed framework package. The ESP32 target (Arduino framework) is unaffected.
